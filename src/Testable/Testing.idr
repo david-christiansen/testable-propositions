@@ -101,7 +101,6 @@ myTest : { [RND, STDIO] } Eff ()
 myTest = do res <- ntests (prop ((x : INT) -> x == x)) 20
             putStrLn (show res)
 
-
 namespace Main
   partial
   main : IO ()
