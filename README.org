@@ -1,0 +1,23 @@
+* Testable propositions about Idris primitive types
+
+This repo contains ongoing development of a framework for validating
+postulates about primitive types with QuickCheck-style testing. It consists of
+a deeply-embedded DSL of propositions (in [[file:src/Testable/Propositions.idr][Testable.Propositions]]) with some
+syntax overloading to make it read like normal Idris propositions (in
+[[file:src/Testable/Syntax.idr][Testable.Syntax]]).
+
+Example definitions are in [[file:src/Testable/Examples.idr][Testable.Examples]].
+
+Propositions can be interpreted either as tests or as types:
+#+BEGIN_EXAMPLE
+||| String equality is reflexive
+propEqReflP : Prop []
+propEqReflP = prop ((x : STRING) -> x == x)
+
+λΠ> propAsType propEqReflP
+(x : String) -> so (intToBool (prim__eqString x x)) : Type
+
+λΠ> testProp [] [] propEqReflP
+\x => intToBool (prim__eqString x x) : String -> Bool
+#+END_EXAMPLE
+
