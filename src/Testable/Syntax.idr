@@ -28,6 +28,10 @@ using (vars : Vect n PrimT)
     (==) : PExpr vars CHAR -> PExpr vars CHAR -> PExpr vars BOOL
     (==) = boolOp Prim__eqChar
 
+  namespace Int
+    (==) : PExpr vars INT -> PExpr vars INT -> PExpr vars BOOL
+    (==) = boolOp Prim__eqInt
+
   instance Num (PExpr vars INT) where
     (+) = Prim__addInt
     (-) = Prim__subInt

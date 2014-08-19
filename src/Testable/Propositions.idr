@@ -137,11 +137,15 @@ using (vars : Vect n PrimT)
   testType vars env (Given h x) = hType vars env (h ++ precond x) Bool
 
   partial
-  testProp : (vars : Vect n PrimT) -> (env : Env vars) -> (p : Prop vars) -> testType vars env p
-  testProp vars env (ForAll t body) = \x => testProp (t::vars) (x::env) body
-  testProp vars env (Given hs x) with (hs)
-    testProp vars env (Given hs x) | []          = testExprTot vars env (precond x) x
-    testProp vars env (Given hs x) | (hy :: hys) = \prf => testProp vars env (Given hys x)
+  testProp' : (vars : Vect n PrimT) -> (env : Env vars) -> (p : Prop vars) -> testType vars env p
+  testProp' vars env (ForAll t body) = \x => testProp' (t::vars) (x::env) body
+  testProp' vars env (Given hs x) with (hs)
+    testProp' vars env (Given hs x) | []          = testExprTot vars env (precond x) x
+    testProp' vars env (Given hs x) | (hy :: hys) = \prf => testProp' vars env (Given hys x)
+
+  partial
+  testProp : (p : Prop []) -> testType [] [] p
+  testProp = testProp' [] []
 
   countForalls : Prop vars -> Nat
   countForalls (ForAll t x) = S $ countForalls x
@@ -158,7 +162,7 @@ using (vars : Vect n PrimT)
   partial
   instantiate' : (p : Prop vars) -> (e : Env vars) -> (input : Env (testInputs p)) -> testExecT p e input
   instantiate' (ForAll t x) e (v::input) = instantiate' x (v::e) input
-  instantiate' (Given xs x) e []         = testProp _ e (Given xs x)
+  instantiate' (Given xs x) e []         = testProp' _ e (Given xs x)
 
 
   ||| Nothing means that the input didn't satisfy the precondition
@@ -184,18 +188,4 @@ propEqRefl' s = s == s
 
 propEqRefl : Prop []
 propEqRefl = ForAll STRING . Given [] . IntToBool $ Prim__eqString (Var Here) (Var Here)
-
-
-class Testable a where
-  %assert_total
-  runTest : a -> Maybe Bool
-
-instance Testable Bool where
-  runTest b = Just b
-
-instance Testable b => Testable (so x -> b) where
-  runTest {x} f with (choose x)
-    runTest f | (Left ok) = runTest (f ok)
-    runTest f | (Right fail) = Nothing
-
 
