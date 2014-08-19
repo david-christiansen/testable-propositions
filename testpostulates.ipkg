@@ -3,7 +3,7 @@ package testpostulates
 -- Testable Propositions
 -- by David Raymond Christiansen
 
-opts = "-p tfrandom"
+opts = "-p effects"
 sourcedir = src
 modules = Testable.Propositions, Testable.Examples, Testable.Syntax
 

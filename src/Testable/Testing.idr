@@ -2,76 +2,39 @@ module Testable.Testing
 
 import Debug.Trace
 
-import System.Random.TF.Gen
-
 import Testable.Propositions
 import Testable.Syntax
 
+import Effects
+import Effect.Random
+import Effect.StdIO
 
-%default total
+%default partial
 
-||| Generator (ported from first QuickCheck paper). Here, we parameterize the type by the random generator `r`.
-data Gen r a = MkGen (Int -> r -> a)
-
-instance Show (Gen r a) where
-  show _ = "<gen>"
-
-instance RandomGen r => Functor (Gen r) where
-  map f (MkGen g) = MkGen $ \i, r => f (g i (snd (next r)))
-
-instance RandomGen r => Applicative (Gen r) where
-  pure x = MkGen (\i, r => x)
-  (MkGen f) <$> (MkGen x) =
-    MkGen $ \i, r =>
-            let (r1, r2) = split r in
-            f i (snd (next r1)) (x i (snd (next r2)))
+rndChar : { [RND] } Eff Char
+rndChar = do i <- rndInt 0 255
+             return $ cast (fromInteger {a=Int} i)
 
 
-instance RandomGen r => Monad (Gen r) where
-  (MkGen m1) >>= k =
-    MkGen $ \i, r => let (r1, r2) = split r
-                         (MkGen m2) = k (m1 i (snd (next r1)))
-                     in m2 i (snd (next r2))
 
-||| Generate a random state
-rand : (RandomGen r) => Gen r r
-rand = MkGen (\n, r => r)
-
-
-choose : (RandomGen r, Random a) => (a, a) -> Gen r a
-choose bounds = map (fst . randomR bounds) rand
-
-
-generate : RandomGen r => Int -> r -> Gen r a -> a
-generate n rnd (MkGen m) = let (size, rnd') = randomR (0, n) rnd in
-                           m size rnd'
-
-sized : RandomGen r => (Int -> Gen r a) -> Gen r a
-sized fgen = MkGen (\n, r => let MkGen m = fgen n in m n r)
-
-elements : RandomGen r => Vect (S n) a -> Gen r a
-elements xs = pure $ elements' !(choose (the Int 0, (cast $ length xs) - 1)) xs
-  where elements' : Int -> Vect (S n) a -> a
-        elements' i [x] = x
-        elements' i (x::y::xs) = if i <= 0 then x else elements' (i-1) (y::xs)
-
-||| Here we take advantage of the fact that we have a closed universe of
-||| types, so `arbitrary` is not a type class method
-arbitrary : RandomGen r => (t : PrimT) -> Gen r (interpPrim t)
-arbitrary INT    = sized $ \n => choose (-n, n)
-arbitrary BOOL   = elements [True, False]
-arbitrary STRING = sized $ \n => map pack . sequence $
-                                   repeatN !(choose (0, n))
-                                           (arbitrary (assert_smaller STRING CHAR))
-  where repeatN : Int -> a -> List a
-        repeatN i x = if i <= 0 then [] else x :: repeatN (assert_smaller i (i-1)) x
-arbitrary CHAR   = map (fst . randomR (chr 0, chr 255)) rand -- for now, just ASCII
-
+arbitrary : (t : PrimT) -> { [RND] } Eff (interpPrim t)
+arbitrary INT = do i <- rndInt (-9223372036854775808) 9223372036854775807
+                   return (fromInteger i)
+arbitrary BOOL = rndSelect' [True, False]
+arbitrary STRING = do len <- rndInt 0 20
+                      return $ pack !(getChars len)
+  where getChars : Integer -> { [RND] } Eff (List Char)
+        getChars n = if n <= 0
+                       then return []
+                       else [| rndChar :: getChars (assert_smaller n (n-1)) |]
+arbitrary CHAR = rndChar
 
 ||| Construct an arbitrary environment for a particular test
-arbitraryEnv : RandomGen r => (vars : Vect n PrimT) -> Gen r (Env vars)
-arbitraryEnv []      = pure []
+arbitraryEnv : (vars : Vect n PrimT) -> { [RND] } Eff (Env vars)
+arbitraryEnv [] = pure []
 arbitraryEnv (t::ts) = [| arbitrary t :: arbitraryEnv ts |]
+
+
 
 
 ||| The output of instiatiate is difficult to run without a bit of typecasing. `Testable` takes care of that.
@@ -108,7 +71,7 @@ using (vars : Vect n PrimT)
     show {t=INT}    x = show x
     show {t=CHAR}   x = show x
     show {t=STRING} x = show x
-    
+
   instance Show (Env vars) where
     show [] = "[]"
     show (x::xs) = "[" ++ showCommas (x :: xs) ++ "]"
@@ -124,31 +87,27 @@ using (vars : Vect n PrimT)
             showRes (Just False) = "Failed"
             showRes Nothing = "Skipped"
 
-partial
-test : RandomGen r => (p : Prop []) -> Gen r (Result (testInputs p))
+test : (p : Prop []) -> { [RND] } Eff (Result (testInputs p))
 test p = do inputs <- arbitraryEnv (testInputs p)
             let res = runTest $ instantiate p inputs
             return $ MkResult res inputs
 
 partial
-ntests : (RandomGen r, Show r) => (seed : r) -> (p : Prop []) -> (n : Nat) -> Vect n (Result (testInputs p))
-ntests seed p Z     = []
-ntests seed p (S n) = let (seed', seed'') = split seed in
-                      let head = generate 50 seed' (test p) in
-                      let rest = ntests seed'' p n in
-                      let _ = trace ("seed at " ++ show (S n) ++ ": " ++ show seed) () in
-                      head :: rest
+ntests : (p : Prop []) -> (n : Nat) -> { [RND] } Eff (Vect n (Result (testInputs p)))
+ntests p Z     = pure []
+ntests p (S n) = [| test p :: ntests p n |]
 
-withSeed : RandomGen r => (seed : IO r) -> (r -> a) -> IO a
-withSeed seed fn = map fn seed
+myTest : { [RND, STDIO] } Eff ()
+myTest = do res <- ntests (prop ((x : INT) -> x == x)) 20
+            putStrLn (show res)
 
-withIndex : Nat -> Vect n a -> Vect n (Nat, a)
-withIndex n [] = []
-withIndex n (x::xs) = (n, x) :: withIndex (S n) xs
 
 namespace Main
   partial
   main : IO ()
-  main = do res <- withSeed (map seedTFGen mkSeed) $
-                     \r => ntests r (prop ((x, y, z : INT) -> x == y+z)) 20
-            putStrLn (show (withIndex 1 res))
+  main = run myTest
+
+
+-- -}
+-- -}
+-- -}
