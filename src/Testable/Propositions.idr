@@ -184,7 +184,7 @@ using (vars : Vect n PrimT)
   partial
   propAsType' : Prop vars -> Env vars -> Type
   propAsType' (ForAll t body) env = (x : interpPrim t) -> propAsType' body (x::env)
-  propAsType' (Given hs body) env = hType _ env hs $ so (testExpr _ env body)
+  propAsType' (Given hs body) env = hType _ env (hs ++ precond body) $ so (testExpr _ env body)
    
   partial
   propAsType : Prop [] -> Type
