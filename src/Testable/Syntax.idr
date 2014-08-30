@@ -20,6 +20,12 @@ using (vars : Vect n PrimT)
   (<) : PExpr vars INT -> PExpr vars INT -> PExpr vars BOOL
   (<) = boolOp Prim__sltInt
 
+  (>) : PExpr vars INT -> PExpr vars INT -> PExpr vars BOOL
+  (>) = boolOp Prim__sgtInt
+  
+  div : PExpr vars INT -> PExpr vars INT -> PExpr vars INT
+  div = Prim__sdivInt
+
   namespace String
     (==) : PExpr vars STRING -> PExpr vars STRING -> PExpr vars BOOL
     (==) = boolOp Prim__eqString

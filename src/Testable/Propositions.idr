@@ -30,9 +30,11 @@ using (vars : Vect n PrimT)
 
     ||| Constructing Bool from Int
     IntToBool : PExpr vars INT -> PExpr vars BOOL
-    
+
     ||| Conditional
     boolElim : PExpr vars BOOL -> PExpr vars t -> PExpr vars t -> PExpr vars t
+
+    Not : PExpr vars BOOL -> PExpr vars BOOL
 
     Prim__addInt : PExpr vars INT -> PExpr vars INT -> PExpr vars INT
     Prim__strHead  : PExpr vars STRING -> PExpr vars CHAR
@@ -41,6 +43,7 @@ using (vars : Vect n PrimT)
     Prim__eqString : PExpr vars STRING -> PExpr vars STRING -> PExpr vars INT
     Prim__lenString : PExpr vars STRING -> PExpr vars INT
     Prim__mulInt : PExpr vars INT -> PExpr vars INT -> PExpr vars INT
+    Prim__sdivInt : PExpr vars INT -> PExpr vars INT -> PExpr vars INT
     Prim__sgtInt : PExpr vars INT -> PExpr vars INT -> PExpr vars INT
     Prim__sltInt : PExpr vars INT -> PExpr vars INT -> PExpr vars INT
     Prim__subInt : PExpr vars INT -> PExpr vars INT -> PExpr vars INT
@@ -74,12 +77,14 @@ using (vars : Vect n PrimT)
   precond (Var x)              = []
   precond (IntToBool x)        = precond x
   precond (boolElim c t f)     = precond c ++ precond t ++ precond f
+  precond (Not b)              = precond b
   precond (Prim__addInt x y)   = precond x ++ precond y
   precond (Prim__strHead x)    = IntToBool (Prim__sgtInt (Prim__lenString x) (Lit 0)) :: precond x
   precond (Prim__eqChar x y)   = precond x ++ precond y
   precond (Prim__eqString x y) = precond x ++ precond y
   precond (Prim__lenString x)  = precond x
   precond (Prim__mulInt x y)   = precond x ++ precond y
+  precond (Prim__sdivInt x y)  = [Not (IntToBool (Prim__eqInt y (Lit 0)))] ++ precond x ++ precond y
   precond (Prim__sgtInt x y)   = precond x ++ precond y
   precond (Prim__sltInt x y)   = precond x ++ precond y
   precond (Prim__eqInt x y)    = precond x ++ precond y
@@ -102,6 +107,7 @@ using (vars : Vect n PrimT)
   testExpr' vars env (Lit x) = x
   testExpr' vars env (IntToBool x) = intToBool $ testExpr' vars env x
   testExpr' vars env (boolElim c t f) = if testExpr' vars env c then testExpr' vars env t else testExpr' vars env f
+  testExpr' vars env (Not b) = not (testExpr' vars env b)
   testExpr' vars env (Prim__addInt x y) = prim__addInt (testExpr' vars env x) (testExpr' vars env y)
   testExpr' vars env (Prim__strHead x) = prim__strHead $ testExpr' vars env x
   testExpr' vars env (Prim__eqChar x y) = prim__eqChar (testExpr' vars env x) (testExpr' vars env y)
@@ -109,6 +115,7 @@ using (vars : Vect n PrimT)
   testExpr' vars env (Prim__eqString x y) = prim__eqString (testExpr' vars env x) (testExpr' vars env y)
   testExpr' vars env (Prim__lenString x) = prim_lenString (testExpr' vars env x)
   testExpr' vars env (Prim__mulInt x y) = prim__mulInt (testExpr' vars env x) (testExpr' vars env y)
+  testExpr' vars env (Prim__sdivInt x y) = prim__sdivInt (testExpr' vars env x) (testExpr' vars env y)
   testExpr' vars env (Prim__sgtInt x y) = prim__sgtInt (testExpr' vars env x) (testExpr' vars env y)
   testExpr' vars env (Prim__sltInt x y) = prim__sltInt (testExpr' vars env x) (testExpr' vars env y)
   testExpr' vars env (Prim__subInt x y) = prim__subInt (testExpr' vars env x) (testExpr' vars env y)
