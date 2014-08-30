@@ -35,9 +35,9 @@ propIntIncGt = prop ((x : INT) ->  x < x + 1)
 
 %provide postulate strEqRefl with testP (record {verbose = True} defaultConfig) $ propEqRefl
 
-%provide postulate strHeadEq with testP (record {verbose = True, count=5} defaultConfig) $ propStrHeadEq
+--%provide postulate strHeadEq with testP (record {verbose = True, required=3, attempt=5} defaultConfig) $ propStrHeadEq
 
-%provide postulate divSmaller with testP (record {verbose = True} defaultConfig) $ propDivSmaller
+%provide postulate divSmaller with testP (record {verbose = True, required=10, attempt=25} defaultConfig) $ propDivSmaller
 
 %provide postulate intIncGt with  testP (record {verbose = True} defaultConfig) $ propIntIncGt
 
