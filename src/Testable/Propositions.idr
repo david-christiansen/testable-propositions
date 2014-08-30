@@ -190,9 +190,5 @@ using (vars : Vect n PrimT)
   propAsType : Prop [] -> Type
   propAsType p = propAsType' p []
 
-propEqRefl' : String -> Bool
-propEqRefl' s = s == s
-
-propEqRefl : Prop []
-propEqRefl = ForAll STRING . Given [] . IntToBool $ Prim__eqString (Var Here) (Var Here)
-
+Property : Type
+Property = Prop []
