@@ -1,0 +1,7 @@
+
+
+* Related work
+ - Experience Report: Applying Random Testing to a Base Type Environment
+   by Vincent St-Amour and Neil Toronto
+   ICFP 2013
+   http://www.ccs.neu.edu/home/stamourv/papers/random-testing-base-type-environment.pdf
